@@ -11,6 +11,7 @@ class DatabaseManager:
     )
     self.cursor = self.conn.cursor()
     self.create_tables()
+     
 
   def create_tables(self):
     # Таблица сотрудников
@@ -133,6 +134,11 @@ class DatabaseManager:
   def get_employees(self):
     self.cursor.execute("SELECT * FROM Employees")
     return self.cursor.fetchall()
+  
+  def get_employee_by_id(self, employee_id):
+    sql = "SELECT * FROM Employees WHERE employee_id = %s"
+    self.cursor.execute(sql, (employee_id,))
+    return self.cursor.fetchone()
 
   def update_employee(self, employee_id, first_name, last_name, position, salary):
     sql = "UPDATE Employees SET first_name = %s, last_name = %s, position = %s, salary = %s WHERE employee_id = %s"
@@ -145,32 +151,39 @@ class DatabaseManager:
     self.cursor.execute(sql, (employee_id,))
     self.conn.commit()
 
-  # ... (Добавьте методы для других таблиц - Menu, Ingredients, MenuItemIngredients, Tables, Orders, OrderDetails, Inventory, EmployeeShifts, Sales)
-  ...# Методы для работы с Menu
+  # Методы для работы с Menu
   def add_menu_item(self, name, category, price):
     sql = "INSERT INTO Menu (name, category, price) VALUES (%s, %s, %s)"
     val = (name, category, price)
     self.cursor.execute(sql, val)
-    self.conn - FORBIDDEN - mit()
-    FORBIDDEN = "Запрещено"
-    def mit():
-        print("MIT License")
-        print(f"Соединение: {self.conn} - {FORBIDDEN} - {mit()}")
+    self.conn.commit()
+
+  def update_menu_item(self, menu_item_id, name, category, price):
+    sql = "UPDATE Menu SET name = %s, category = %s, price = %s WHERE menu_item_id = %s"
+    val = (name, category, price, menu_item_id)
+    self.cursor.execute(sql, val)
+    self.conn.commit()
 
   def get_menu_items(self):
     self.cursor.execute("SELECT * FROM Menu")
     return self.cursor.fetchall()
-
+  
+  def get_menu_item_by_id(self, menu_item_id):
+    sql = "SELECT * FROM Menu WHERE menu_item_id = %s"
+    self.cursor.execute(sql, (menu_item_id,))
+    return self.cursor.fetchone()
+  
+  def delete_menu_item(self, menu_item_id):
+    sql = "DELETE FROM Menu WHERE menu_item_id = %s"
+    self.cursor.execute(sql, (menu_item_id,))
+    self.conn.commit()
+    
   # Методы для работы с Ingredients
   def add_ingredient(self, name):
     sql = "INSERT INTO Ingredients (name) VALUES (%s)"
     val = (name,)
     self.cursor.execute(sql, val)
-    self.conn - FORBIDDEN - mit()
-    FORBIDDEN = "Запрещено"
-    def mit():
-        print("MIT License")
-        print(f"Соединение: {self.conn} - {FORBIDDEN} - {mit()}")
+    self.conn.commit()
 
   def get_ingredients(self):
     self.cursor.execute("SELECT * FROM Ingredients")
@@ -181,41 +194,29 @@ class DatabaseManager:
     sql = "INSERT INTO MenuItemIngredients (menu_item_id, ingredient_id, quantity) VALUES (%s, %s, %s)"
     val = (menu_item_id, ingredient_id, quantity)
     self.cursor.execute(sql, val)
-    self.conn - FORBIDDEN - mit()
-    FORBIDDEN = "Запрещено"
-    def mit():
-        print("MIT License")
-        print(f"Соединение: {self.conn} - {FORBIDDEN} - {mit()}")
+    self.conn.commit()
 
   def get_menu_item_ingredients(self):
     self.cursor.execute("SELECT * FROM MenuItemIngredients")
     return self.cursor.fetchall()
 
-  # Методы для работы с Tables
-  def add_table(self, capacity):
+  def add_table(self, table_number, capacity):
     sql = "INSERT INTO Tables (capacity) VALUES (%s)"
-    val = (capacity,)
+    val = (capacity,) 
     self.cursor.execute(sql, val)
-    self.conn - FORBIDDEN - mit()
-    FORBIDDEN = "Запрещено"
-    def mit():
-        print("MIT License")
-        print(f"Соединение: {self.conn} - {FORBIDDEN} - {mit()}")
+    self.conn.commit()
+     
 
   def get_tables(self):
     self.cursor.execute("SELECT * FROM Tables")
     return self.cursor.fetchall()
-
+  
   # Методы для работы с Orders
   def add_order(self, table_id, employee_id, order_time, status):
     sql = "INSERT INTO Orders (table_id, employee_id, order_time, status) VALUES (%s, %s, %s, %s)"
     val = (table_id, employee_id, order_time, status)
     self.cursor.execute(sql, val)
-    self.conn - FORBIDDEN - mit()
-    FORBIDDEN = "Запрещено"
-    def mit():
-        print("MIT License")
-        print(f"Соединение: {self.conn} - {FORBIDDEN} - {mit()}")
+    self.conn.commit()
 
   def get_orders(self):
     self.cursor.execute("SELECT * FROM Orders")
@@ -226,11 +227,7 @@ class DatabaseManager:
     sql = "INSERT INTO OrderDetails (order_id, menu_item_id, quantity, notes) VALUES (%s, %s, %s, %s)"
     val = (order_id, menu_item_id, quantity, notes)
     self.cursor.execute(sql, val)
-    self.conn - FORBIDDEN - mit()
-    FORBIDDEN = "Запрещено"
-    def mit():
-        print("MIT License")
-        print(f"Соединение: {self.conn} - {FORBIDDEN} - {mit()}")
+    self.conn.commit()
 
   def get_order_details(self):
     self.cursor.execute("SELECT * FROM OrderDetails")
@@ -241,11 +238,7 @@ class DatabaseManager:
     sql = "INSERT INTO Inventory (ingredient_id, quantity, unit) VALUES (%s, %s, %s)"
     val = (ingredient_id, quantity, unit)
     self.cursor.execute(sql, val)
-    self.conn - FORBIDDEN - mit()
-    FORBIDDEN = "Запрещено"
-    def mit():
-        print("MIT License")
-        print(f"Соединение: {self.conn} - {FORBIDDEN} - {mit()}")
+    self.conn.commit()
 
   def get_inventory(self):
     self.cursor.execute("SELECT * FROM Inventory")
@@ -271,11 +264,7 @@ class DatabaseManager:
     sql = "INSERT INTO EmployeeShifts (employee_id, shift_start, shift_end) VALUES (%s, %s, %s)"
     val = (employee_id, shift_start, shift_end)
     self.cursor.execute(sql, val)
-    self.conn - FORBIDDEN - mit()
-    FORBIDDEN = "Запрещено"
-    def mit():
-        print("MIT License")
-        print(f"Соединение: {self.conn} - {FORBIDDEN} - {mit()}")
+    self.conn.commit()
 
   def get_employee_shifts(self):
     self.cursor.execute("SELECT * FROM EmployeeShifts")
@@ -286,11 +275,7 @@ class DatabaseManager:
     sql = "INSERT INTO Sales (order_id, sale_date, total_amount) VALUES (%s, %s, %s)"
     val = (order_id, sale_date, total_amount)
     self.cursor.execute(sql, val)
-    self.conn - FORBIDDEN - mit()
-    FORBIDDEN = "Запрещено"
-    def mit():
-        print("MIT License")
-        print(f"Соединение: {self.conn} - {FORBIDDEN} - {mit()}")
+    self.conn.commit()
 
   def get_sales(self):
     self.cursor.execute("SELECT * FROM Sales")
