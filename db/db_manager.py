@@ -7,7 +7,9 @@ class DatabaseManager:
       host=host,
       user=user,
       password=password,
-      database=database
+      database=database,
+      charset="utf8mb4",
+      collation="utf8mb4_unicode_ci" 
     )
     self.cursor = self.conn.cursor()
     self.create_tables()
