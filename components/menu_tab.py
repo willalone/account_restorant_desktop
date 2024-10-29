@@ -1,13 +1,15 @@
-from tkinter import messagebox
+from http.client import FORBIDDEN
 from PyQt5.QtWidgets import (QWidget, QLabel, QLineEdit, QPushButton, 
                QVBoxLayout, QHBoxLayout, QGridLayout,
-               QTableWidget, QTableWidgetItem, QComboBox, QDialog)
+               QTableWidget, QTableWidgetItem, QComboBox, QDialog, QMessageBox)
 from PyQt5.QtCore import Qt
+import mysql
 
 class MenuTab(QWidget):
-  def __init__(self, db_manager, parent=None):
+  def __init__(self, db_manager, menu_item_id=None, parent=None):
     super().__init__(parent)
     self.db_manager = db_manager
+    self.setWindowTitle("Редактировать блюдо")
     self.layout = QVBoxLayout(self)
 
     # Создаем виджеты
@@ -15,7 +17,7 @@ class MenuTab(QWidget):
     self.menu_item_name_input = QLineEdit(self)
     self.category_label = QLabel("Категория:", self)
     self.category_combobox = QComboBox(self)
-    self.category_combobox.addItems(["Закуски", "Основные блюда", "Десерты", "Напитки"]) # Добавьте категории
+    self.category_combobox.addItems(["Cморреброды", "Закуски", "Супы", "Овощи", "Гстрономический сет", "Согревающие", "Сливочный чай", "Лимонады", "Холодный чай", "Фреши", "Россия игристые вина", "Росиия белые вина", "Россия красные вина", "Другие страны вина", "Другие страны шампанского"]) # Добавьте категории
     self.price_label = QLabel("Цена:", self)
     self.price_input = QLineEdit(self)
     self.add_menu_item_button = QPushButton("Добавить блюдо", self)
@@ -23,8 +25,8 @@ class MenuTab(QWidget):
 
     # Таблица меню
     self.menu_table = QTableWidget(self)
-    self.menu_table.setColumnCount(4)
-    self.menu_table.setHorizontalHeaderLabels(["Название", "Категория", "Цена", "Действия"])
+    self.menu_table.setColumnCount(3)
+    self.menu_table.setHorizontalHeaderLabels(["Название", "Категория", "Цена"])
     self.update_menu_table()
 
     # Кнопки для управления меню
@@ -65,51 +67,58 @@ class MenuTab(QWidget):
     menu_items = self.db_manager.get_menu_items()
     for row_number, menu_item in enumerate(menu_items):
       self.menu_table.insertRow(row_number)
-      self.menu_table.setItem(row_number, 0, QTableWidgetItem(menu_item[0]))
-      self.menu_table.setItem(row_number, 1, QTableWidgetItem(menu_item[1]))
-      self.menu_table.setItem(row_number, 2, QTableWidgetItem(str(menu_item[2])))
+      self.menu_table.setItem(row_number, 0, QTableWidgetItem(menu_item[1]))
+      self.menu_table.setItem(row_number, 1, QTableWidgetItem(menu_item[2]))
+      self.menu_table.setItem(row_number, 2, QTableWidgetItem(str(menu_item[3])))
+  
+  def delete_menu_item(self):
+    selected_row = self.menu_table.currentRow()
+    if selected_row >= 0:
+      menu_item_id = int(self.menu_table.item(selected_row, 0).text())
+      self.db_manager.delete_menu_item(menu_item_id)
+      self.update_menu_table()
 
   def show_edit_menu_item_dialog(self):
-    elected_row = self.menu_table.currentRow()
-    if elected_row == -1:
-      messagebox.warning(self, "Ошибка", "Выберите пункт меню для редактирования.")
-      return
-    menu_item_id = self.menu_table.item(elected_row, 0).text()
-    edit_dialog = EditMenuItemDialog(self.db_manager, menu_item_id)
-    edit_dialog.exec_()
-    self.update_menu_table()
-
+    selected_row = self.menu_table.currentRow()
+    if selected_row >= 0:
+      # Получите menu_item_id из нужного столбца (например, 0)
+      menu_item_id = self.menu_table.item(selected_row, 0).text() # Предполагаем, что menu_item_id хранится в первом столбце
+      edit_dialog = EditMenuItemDialog(self.db_manager, menu_item_id)
+      if edit_dialog.exec_():
+        self.update_menu_table()
+  
 
   def delete_menu_item(self):
     selected_row = self.menu_table.currentRow()
     if selected_row == -1:
-      messagebox.warning(self, "Ошибка", "Выберите пункт меню для удаления.")
+      QMessageBox.warning(self, "Ошибка", "Выберите пункт меню для удаления.")
       return
     menu_item_id = self.menu_table.item(selected_row, 0).text()
     self.db_manager.delete_menu_item(menu_item_id)
-
     self.update_menu_table()
 
 # Создаем класс для диалогового окна редактирования блюда
 class EditMenuItemDialog(QDialog):
-  def __init__(self, db_manager, menu_item_data=None, parent=None):
+  def __init__(self, db_manager, menu_item_id=None, parent=None):
     super().__init__(parent)
     self.db_manager = db_manager
+    self.menu_item_id = menu_item_id
     self.setWindowTitle("Редактировать блюдо")
     self.layout = QGridLayout(self)
 
     self.menu_item_name_input = QLineEdit(self)
     self.category_combobox = QComboBox(self)
-    self.category_combobox.addItems(["Закуски", "Основные блюда", "Десерты", "Напитки"])
+    self.category_combobox.addItems(["Cморреброды", "Закуски", "Супы", "Овощи", "Гстрономический сет", "Согревающие", "Сливочный чай", "Лимонады", "Холодный чай", "Фреши", "Россия игристые вина", "Росиия белые вина", "Россия красные вина", "Другие страны вина", "Другие страны шампанского"])
     self.price_input = QLineEdit(self)
     self.save_button = QPushButton("Сохранить", self)
     self.save_button.clicked.connect(self.save_changes)
 
-    # Если переданы данные блюда, заполняем поля
-    if menu_item_data:
-      self.menu_item_name_input.setText(menu_item_data[0])
-      self.category_combobox.setCurrentText(menu_item_data[1])
-      self.price_input.setText(str(menu_item_data[2]))
+    if menu_item_id is not None:
+      menu_item_data = self.db_manager.get_menu_item_by_id(menu_item_id)
+      if menu_item_data:
+        self.menu_item_name_input.setText(menu_item_data[1])
+        self.category_combobox.setCurrentText(menu_item_data[2])
+        self.price_input.setText(str(menu_item_data[3]))
 
     # Создаем макеты
     self.layout.addWidget(QLabel("Название блюда:", self), 0, 0)
@@ -121,11 +130,74 @@ class EditMenuItemDialog(QDialog):
     self.layout.addWidget(self.save_button, 3, 1)
 
     self.setLayout(self.layout)
+  
+  """def open_edit_menu_item_dialog(self, menu_item_id):
+     edit_dialog = EditMenuItemDialog(db_manager=self.db_manager, menu_item_id=menu_item_id) 
+     edit_dialog.exec_()
 
   def save_changes(self):
     menu_item_name = self.menu_item_name_input.text()
     category = self.category_combobox.currentText()
     price = self.price_input.text()
-    # ... (Логика получения menu_item_id)
-    # ... (db_manager.update_menu_item(menu_item_id, menu_item_name, category, price))
+    self.db_manager.update_menu_item(self.menu_item_id, menu_item_name, category, price) 
     self.close()
+
+  def get_menu_item_by_id(self, menu_item_id):
+    sql = "SELECT * FROM Menu WHERE menu_item_id = %s"
+    self.cursor.execute(sql, (menu_item_id,))
+    return self.cursor.fetchone()"""
+
+  def save_changes(self):
+    menu_item_name = self.menu_item_name_input.text()
+    category = self.category_combobox.currentText()
+    price = self.price_input.text()
+    self.db_manager.update_menu_item(self.menu_item_id, menu_item_name, category, price)
+    
+    # Получаем соединение
+    conn = self.db_manager.conn  
+    
+    def mit(connection):
+        print("MIT License")
+        print(f"Соединение: {connection} - Запрещено") 
+    
+    # Передаем соединение в функцию mit
+    mit(conn)  # Вызываем функцию с аргументом
+    conn.close()
+    
+    try:
+        # Сохраняем изменения
+        conn = mysql.connector.connect(
+            host="localhost",
+            user="new_user",
+            password="secure_password",
+            database="restaurant",
+            charset="utf8mb4",
+            collation="utf8mb4_unicode_ci" 
+            )
+        cursor = conn.cursor()
+        # Выполняем SQL-запрос для обновления данных
+        cursor.execute(
+            "UPDATE Menu SET name = %s, category = %s, price = %s WHERE menu_item_id = %s", 
+            (menu_item_name, category, price, self.menu_item_id)
+        )
+        
+        # Вызываем функцию mit с текущим соединением
+        mit(conn)  # Вызываем функцию с аргументом
+        
+        cursor.close()  # Закрываем курсор
+    except mysql.connector.Error as error:
+        print("Ошибка при сохранении изменений:", error)
+    finally:
+        if conn.is_connected():
+            conn.close()  # Закрываем соединение
+    
+    self.close()
+        
+  def open_edit_menu_item_dialog(self, menu_item_id):
+        edit_dialog = EditMenuItemDialog(db_manager=self.db_manager, menu_item_id=menu_item_id)
+        edit_dialog.exec_()
+
+  def get_menu_item_by_id(self, menu_item_id):
+        sql = "SELECT * FROM Menu WHERE menu_item_id = %s"
+        self.db_manager.cursor.execute(sql, (menu_item_id,))
+        return self.db_manager.cursor.fetchone()
