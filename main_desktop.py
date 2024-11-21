@@ -1,42 +1,47 @@
 import sys
-from PyQt5.QtWidgets import *
+from PyQt5.QtWidgets import QApplication, QMainWindow
+from PyQt5.QtCore import QCoreApplication
 
-from ui.main_window import MainWindow # Импорт главного окна
-from db.db_manager import DatabaseManager # Импорт менеджера БД
+from ui.main_window import MainWindow  # Импорт главного окна
+from db.db_manager import DatabaseManager  # Импорт менеджера БД
 from components.orders_tab import OrdersTab
 from components.employee_tab import EmployeesTab
 from components.menu_tab import MenuTab
 from components.tables_tab import TablesTab
 from components.reports_tab import ReportsTab
-from components.inventory_tab import InventoryTab
+from ui.login_window import LoginWindow  # Импорт окна входа
 
 class RestaurantApp(QMainWindow):
-  def __init__(self, parent=None):
-    super().__init__(parent)
-    self.app = app
-    self.setWindowTitle("Ресторанное приложение")
-    self.resize(800, 600)
-    self.db_manager = DatabaseManager("localhost", "new_user", "secure_password", "restaurant") # Инициализация менеджера БД
-    self.initUI()
+    def __init__(self, app, parent=None):
+        super().__init__(parent)
+        self.app = app  # Инициализируем объект QApplication
+        self.db_manager = DatabaseManager("localhost", "new_user", "secure_password", "restaurant")
+        self.initUI()
 
-  def initUI(self):
-    # Создание главного окна
-    self.main_window = MainWindow(app)
-    self.setCentralWidget(self.main_window)
+    def initUI(self):
+        # Создаем окно входа и показываем его
+        self.login_window = LoginWindow(self.db_manager, self)
+        self.login_window.show()
 
-    # Добавление вкладок
-    self.main_window.tabs.addTab(OrdersTab(self.db_manager), "Заказы")
-    self.main_window.tabs.addTab(EmployeesTab(self.db_manager), "Сотрудники")
-    self.main_window.tabs.addTab(MenuTab(self.db_manager), "Меню")
-    self.main_window.tabs.addTab(TablesTab(self.db_manager), "Столы")
-    self.main_window.tabs.addTab(ReportsTab(self.db_manager), "Отчеты")
-    self.main_window.tabs.addTab(InventoryTab(self.db_manager), "Склад")
+        # Главное окно не создается здесь, оно будет создано после входа
+        self.main_window = None
 
-    self.show()
+    def show_main_window(self, user_role):
+      print(f"Showing main window for role: {user_role}")
+      try:
+          self.main_window = MainWindow(self, user_role, self.db_manager)  # Передаем все нужные параметры
+          self.main_window.show()
+          print("Main window shown")
 
+          # Добавление вкладок
+          self.main_window.add_tabs()  # вызываем метод для добавления вкладок
+
+          self.login_window.close()  # Закрываем только окно входа
+          print("Login window closed")
+      except Exception as e:
+          print(f"Error in creating main window: {e}")
 
 if __name__ == "__main__":
-  app = QApplication(sys.argv)
-  ex = RestaurantApp()
-  ex.show()
-  sys.exit(app.exec_())
+    app = QApplication(sys.argv)  # Создаем объект QApplication
+    ex = RestaurantApp(app)  # Передаем объект приложения в RestaurantApp
+    sys.exit(app.exec_())  # Запуск основного цикла обработки событий
