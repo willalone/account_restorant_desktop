@@ -1,5 +1,16 @@
 from http.client import FORBIDDEN
 import mysql.connector
+from db.user_model import user
+from datetime import datetime
+
+
+class User:
+  def __init__(self, username, password):
+    self.username = username
+    self.password = password
+
+  def check_password(self, password):
+    return self.password == password
 
 class DatabaseManager:
   def __init__(self, host, user, password, database):
@@ -13,7 +24,14 @@ class DatabaseManager:
     )
     self.cursor = self.conn.cursor()
     self.create_tables()
-     
+  
+  def get_user_by_login(self, login):
+      self.cursor.execute("SELECT * FROM users WHERE login=?", (login,))
+      row = self.cursor.fetchone()
+      if row:
+        return user(row[0], row[1], row[2], row[3])
+      else:
+        return None
 
   def create_tables(self):
     # Таблица сотрудников
@@ -26,6 +44,16 @@ class DatabaseManager:
         salary DECIMAL(10,2)
       )
     """)
+
+    self.cursor.execute("""
+      CREATE TABLE IF NOT EXISTS users (
+        id INT PRIMARY KEY AUTO_INCREMENT,
+        username TEXT UNIQUE,
+        password TEXT
+      )
+    """)
+    self.conn.commit()
+
 
     # Таблица меню
     self.cursor.execute("""
@@ -179,6 +207,12 @@ class DatabaseManager:
     sql = "DELETE FROM Menu WHERE menu_item_id = %s"
     self.cursor.execute(sql, (menu_item_id,))
     self.conn.commit()
+
+  def get_dish_id_by_name(self, name):
+    query = "SELECT menu_item_id FROM menu WHERE name = %s"
+    self.cursor.execute(query, (name,))
+    result = self.cursor.fetchone()
+    return result[0] if result else None
     
   # Методы для работы с Ingredients
   def add_ingredient(self, name):
@@ -214,15 +248,41 @@ class DatabaseManager:
     return self.cursor.fetchall()
   
   # Методы для работы с Orders
-  def add_order(self, table_id, employee_id, order_time, status):
-    sql = "INSERT INTO Orders (table_id, employee_id, order_time, status) VALUES (%s, %s, %s, %s)"
-    val = (table_id, employee_id, order_time, status)
+  def add_order(self, table_id, employee_id, status):
+    sql = """
+        INSERT INTO Orders (table_id, employee_id, status)
+        VALUES (%s, %s, %s)
+    """
+    val = (table_id, employee_id, status)
     self.cursor.execute(sql, val)
+    self.conn.commit() 
+
+  def edit_order(self, order_id, table_id, employee_id, status):
+    sql = """
+        UPDATE Orders
+        SET table_id = %s, employee_id = %s, status = %s
+        WHERE order_id = %s
+    """
+    val = (table_id, employee_id, status, order_id)
+    self.cursor.execute(sql, val)
+    self.conn.commit()
+
+  def delete_order(self, order_id):
+    sql = "DELETE FROM Orders WHERE order_id = %s"
+    self.cursor.execute(sql, (order_id,))
     self.conn.commit()
 
   def get_orders(self):
     self.cursor.execute("SELECT * FROM Orders")
     return self.cursor.fetchall()
+  
+  def execute_query(self, query, params=None):
+    """Выполняет SQL-запрос и возвращает результат."""
+    cursor = self.conn.cursor()  # Используем self.conn, а не self.db_connection
+    cursor.execute(query, params or ())
+    result = cursor.fetchall()  # Получаем все строки результата
+    cursor.close()
+    return result
 
   # Методы для работы с OrderDetails
   def add_order_detail(self, order_id, menu_item_id, quantity, notes):
@@ -279,9 +339,84 @@ class DatabaseManager:
     self.cursor.execute(sql, val)
     self.conn.commit()
 
-  def get_sales(self):
-    self.cursor.execute("SELECT * FROM Sales")
-    return self.cursor.fetchall()
+  def get_sales_by_day(self, sale_date):
+        self.cursor.execute("""
+            SELECT 
+                m.name, 
+                SUM(od.quantity), 
+                SUM(od.quantity * m.price), 
+                s.sale_date
+            FROM 
+                Orders o
+            JOIN 
+                OrderDetails od ON o.order_id = od.order_id
+            JOIN 
+                Menu m ON od.menu_item_id = m.menu_item_id
+            JOIN 
+                Sales s ON o.order_id = s.order_id
+            WHERE 
+                s.sale_date = %s
+            GROUP BY 
+                m.name
+        """, (sale_date,))
+        return self.cursor.fetchall()
+  
+  def get_sales_by_week(self, start_date, end_date):
+        self.cursor.execute("""
+            SELECT 
+                m.name, 
+                SUM(od.quantity), 
+                SUM(od.quantity * m.price), 
+                s.sale_date
+            FROM 
+                Orders o
+            JOIN 
+                OrderDetails od ON o.order_id = od.order_id
+            JOIN 
+                Menu m ON od.menu_item_id = m.menu_item_id
+            JOIN 
+                Sales s ON o.order_id = s.order_id
+            WHERE 
+                s.sale_date BETWEEN %s AND %s
+            GROUP BY 
+                m.name
+        """, (start_date, end_date))
+        return self.cursor.fetchall()
+
+    # Метод для получения данных за месяц
+  def get_sales_by_month(self, start_date, end_date):
+        self.cursor.execute("""
+            SELECT 
+                m.name, 
+                SUM(od.quantity), 
+                SUM(od.quantity * m.price), 
+                s.sale_date
+            FROM 
+                Orders o
+            JOIN 
+                OrderDetails od ON o.order_id = od.order_id
+            JOIN 
+                Menu m ON od.menu_item_id = m.menu_item_id
+            JOIN 
+                Sales s ON o.order_id = s.order_id
+            WHERE 
+                s.sale_date BETWEEN %s AND %s
+            GROUP BY 
+                m.name
+        """, (start_date, end_date))
+        return self.cursor.fetchall()
+  
+  # Методы для работы с регистрацией
+  def get_user_by_login(self, username):
+    """Возвращает информацию о пользователе по его логину (username)."""
+    self.cursor.execute("SELECT * FROM users WHERE username = %s", (username,))
+    user_data = self.cursor.fetchone()
+    if user_data:
+      return user(user_data[1], user_data[2]) # Создаем объект User
+    else:
+      return None
 
   def close_connection(self):
     self.conn.close()
+
+  
