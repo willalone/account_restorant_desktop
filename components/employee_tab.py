@@ -74,18 +74,20 @@ class EmployeesTab(QWidget):
       self.employees_table.setItem(row_number, 4, QTableWidgetItem(str(employee[4])))
 
   def show_edit_employee_dialog(self):
-    # Получение выбранного сотрудника из таблицы
-        selected_row = self.employees_table.currentRow()
-        if selected_row == -1:
-            QWidget.QMessageBox.warning(self, "Ошибка", "Выберите сотрудника для редактирования.")
-            return
+    selected_row = self.employees_table.currentRow()
+    if selected_row == -1:
+        QWidget.QMessageBox.warning(self, "Ошибка", "Выберите сотрудника для редактирования.")
+        return
 
-        employee_id = int(self.employees_table.item(selected_row, 0).text())
+    # Получаем ID сотрудника из выбранной строки таблицы
+    employee_id = int(self.employees_table.item(selected_row, 0).text())
 
-        # Создание диалогового окна EditEmployeeDialog
-        dialog = EditEmployeeDialog(self.db_manager, employee_id)
-        if dialog.exec_():
-            # Обновить таблицу после редактирования
+    # Создаем диалоговое окно один раз и вызываем exec_()
+    dialog = EditEmployeeDialog(self.db_manager, employee_id)
+
+    # Вызываем exec_() на диалоге
+    if dialog.exec_():
+        if dialog.result() == 200:
             self.update_employees_table()
             
   def delete_employee(self):
@@ -106,6 +108,7 @@ class EditEmployeeDialog(QDialog):
     self.setWindowTitle("Редактировать сотрудника")
     self.layout = QGridLayout(self)
 
+    self.employee_id = employee_data
     self.first_name_input = QLineEdit(self)
     self.last_name_input = QLineEdit(self)
     self.position_input = QLineEdit(self)
@@ -113,12 +116,12 @@ class EditEmployeeDialog(QDialog):
     self.save_button = QPushButton("Сохранить", self)
     self.save_button.clicked.connect(self.save_changes)
 
-    # Если переданы данные сотрудника, заполняем поля
-    if employee_data:
-      self.first_name_input.setText(employee_data[1])
-      self.last_name_input.setText(employee_data[2])
-      self.position_input.setText(employee_data[3])
-      self.salary_input.setText(str(employee_data[4]))
+    db_employee_data = self.db_manager.get_employee_by_id(employee_data)
+    if db_employee_data:
+      self.first_name_input.setText(db_employee_data[1])
+      self.last_name_input.setText(db_employee_data[2])
+      self.position_input.setText(db_employee_data[3])
+      self.salary_input.setText(str(db_employee_data[4]))
 
     # Создаем макеты
     self.layout.addWidget(QLabel("Имя:", self), 0, 0)
@@ -134,10 +137,22 @@ class EditEmployeeDialog(QDialog):
     self.setLayout(self.layout)
 
   def save_changes(self):
-    first_name = self.first_name_input.text()
-    last_name = self.last_name_input.text()
-    position = self.position_input.text()
-    salary = self.salary_input.text()
-    # ... (Логика получения employee_id)
-    # ... (db_manager.update_employee(employee_id, first_name, last_name, position, salary))
-    self.close()
+    try:
+        first_name = self.first_name_input.text()
+        last_name = self.last_name_input.text()
+        position = self.position_input.text()
+        salary = self.salary_input.text()
+
+        print(f"Saving data: {first_name}, {last_name}, {position}, {salary}")  # Логируем данные
+
+        # Проверка валидности данных
+        if not all([first_name, last_name, position, salary]):
+            raise ValueError("Все поля должны быть заполнены.")
+
+        self.db_manager.update_employee(self.employee_id, first_name, last_name, position, salary)
+        self.accept()  # Вместо done() используйте accept()
+    except Exception as e:
+        print(f"Error saving employee data: {e}")
+        QWidget.QMessageBox.warning(self, "Ошибка", f"Не удалось сохранить изменения: {e}")
+        self.reject()  # Вместо done(0) используйте reject()
+
