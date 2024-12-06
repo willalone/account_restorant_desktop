@@ -1,4 +1,4 @@
-from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QLabel, QMainWindow, QTabWidget, QMenu, QAction)
+from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QLabel, QMainWindow, QTabWidget, QMenu, QAction, QDesktopWidget)
 from PyQt5.QtGui import QIcon
 from PyQt5.QtCore import QCoreApplication  # Добавим импорт QCoreApplication
 
@@ -13,32 +13,54 @@ class MainWindow(QMainWindow):
     def __init__(self, parent=None, user_role=None, db_manager=None, app=None):
         super().__init__(parent)
         self.parent = parent
-        self.user_role = user_role  # Сохраняем роль пользователя
-        self.db_manager = db_manager  # Сохраняем объект db_manager
+        self.user_role = user_role
+        self.db_manager = db_manager
         self.setWindowTitle("Главное окно")
-        self.tabs = QTabWidget()
-        self.setCentralWidget(self.tabs)
+        self.tabs = QTabWidget()  # Используем одно создание вкладок
+        self.setCentralWidget(self.tabs)  # Назначаем вкладки центральным виджетом
         self.initUI()
 
     def initUI(self):
+        # Установка стиля для обводки главного окна
+        self.setStyleSheet("""
+            QMainWindow {
+                border: 2px solid red;
+                border-radius: 10px;
+            }
+        """)
+
+        # Стилизация вкладок
+        self.tabs.setStyleSheet("""
+            QTabWidget::pane { 
+                border: 2px solid red; 
+                border-radius: 5px; 
+            }
+            QTabBar::tab {
+                background: lightgray;
+                border: 1px solid red;
+                padding: 5px;
+            }
+            QTabBar::tab:selected {
+                background: white;
+                border-color: red;
+            }
+        """)
+
         # Создаем виджеты
-        label = QLabel("Это QLabel")
-        # Создаем горизонтальный макет
+        label = QLabel("Хочу 5")
         hbox = QVBoxLayout()
         hbox.addWidget(label)
 
         # Вкладки
         self.tabs = QTabWidget(self)
-        hbox.addWidget(self.tabs)  # Добавляем вкладки в макет
+        hbox.addWidget(self.tabs)
 
-        # Устанавливаем centralWidget
         centralWidget = QWidget()
-        centralWidget.setLayout(hbox)  # Устанавливаем макет на центральный виджет
+        centralWidget.setLayout(hbox)
         self.setCentralWidget(centralWidget)
 
         # Меню
-        self.menubar = self.menuBar()  # Получаем меню-бар из QMainWindow
-
+        self.menubar = self.menuBar()
         self.fileMenu = QMenu('Файл', self)
         self.editMenu = QMenu('Редактировать', self)
         self.reportMenu = QMenu('Отчеты', self)
@@ -56,5 +78,14 @@ class MainWindow(QMainWindow):
         # Действия меню
         exitAction = QAction(QIcon('exit.png'), 'Выход', self)
         exitAction.setShortcut('Ctrl+Q')
-        exitAction.triggered.connect(QCoreApplication.quit)  # Используем QCoreApplication для завершения
+        exitAction.triggered.connect(QCoreApplication.quit)
         self.fileMenu.addAction(exitAction)
+    
+    def showEvent(self, event):
+        # Центрируем окно при показе
+        screen_geometry = QDesktopWidget().availableGeometry()  # Получаем доступную область экрана
+        window_geometry = self.frameGeometry()  # Получаем геометрию текущего окна
+        center_point = screen_geometry.center()  # Находим центр экрана
+        window_geometry.moveCenter(center_point)  # Перемещаем окно в центр
+        self.move(window_geometry.topLeft())  # Перемещаем окно
+        super().showEvent(event)  # Не забываем вызвать родительский обработчик
