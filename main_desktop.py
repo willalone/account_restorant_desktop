@@ -2,6 +2,7 @@ import sys
 from PyQt5.QtWidgets import QApplication, QMainWindow
 from PyQt5.QtCore import QCoreApplication
 
+
 from ui.main_window import MainWindow  # Импорт главного окна
 from db.db_manager import DatabaseManager  # Импорт менеджера БД
 from components.orders_tab import OrdersTab
@@ -27,19 +28,21 @@ class RestaurantApp(QMainWindow):
         self.main_window = None
 
     def show_main_window(self, user_role):
-      print(f"Showing main window for role: {user_role}")
-      try:
-          self.main_window = MainWindow(self, user_role, self.db_manager)  # Передаем все нужные параметры
-          self.main_window.show()
-          print("Main window shown")
+        print(f"Showing main window for role: {user_role}")
+        try:
+            # Проверим, что main_window создается корректно
+            self.main_window = MainWindow(self, user_role, self.db_manager)
+            self.main_window.show()
+            print("Main window shown")
 
-          # Добавление вкладок
-          self.main_window.add_tabs()  # вызываем метод для добавления вкладок
+            # Закрытие окна входа
+            self.login_window.hide()  # Закрываем только окно входа
+            print("Login window closed")
 
-          self.login_window.close()  # Закрываем только окно входа
-          print("Login window closed")
-      except Exception as e:
-          print(f"Error in creating main window: {e}")
+        except Exception as e:
+            print(f"Error in creating main window: {e}")
+            import traceback
+            traceback.print_exc()
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)  # Создаем объект QApplication
