@@ -65,26 +65,6 @@ class DatabaseManager:
       )
     """)
 
-    # Таблица ингредиентов
-    self.cursor.execute("""
-      CREATE TABLE IF NOT EXISTS Ingredients (
-        ingredient_id INT AUTO_INCREMENT PRIMARY KEY,
-        name VARCHAR(255) NOT NULL
-      )
-    """)
-
-    # Таблица состав блюда
-    self.cursor.execute("""
-      CREATE TABLE IF NOT EXISTS MenuItemIngredients (
-        id INT AUTO_INCREMENT PRIMARY KEY,
-        menu_item_id INT NOT NULL,
-        ingredient_id INT NOT NULL,
-        quantity DECIMAL(10,2) NOT NULL,
-        FOREIGN KEY (menu_item_id) REFERENCES Menu(menu_item_id),
-        FOREIGN KEY (ingredient_id) REFERENCES Ingredients(ingredient_id)
-      )
-    """)
-
     # Таблица столов
     self.cursor.execute("""
       CREATE TABLE IF NOT EXISTS Tables (
@@ -103,41 +83,6 @@ class DatabaseManager:
         status VARCHAR(255) DEFAULT 'В обработке',
         FOREIGN KEY (table_id) REFERENCES Tables(table_id),
                 FOREIGN KEY (employee_id) REFERENCES Employees(employee_id)
-      )
-    """)
-
-    # Таблица деталей заказа
-    self.cursor.execute("""
-      CREATE TABLE IF NOT EXISTS OrderDetails (
-        id INT AUTO_INCREMENT PRIMARY KEY,
-        order_id INT NOT NULL,
-        menu_item_id INT NOT NULL,
-        quantity INT NOT NULL,
-        notes TEXT,
-        FOREIGN KEY (order_id) REFERENCES Orders(order_id),
-        FOREIGN KEY (menu_item_id) REFERENCES Menu(menu_item_id)
-      )
-    """)
-
-    # Таблица склада
-    self.cursor.execute("""
-      CREATE TABLE IF NOT EXISTS Inventory (
-        inventory_id INT AUTO_INCREMENT PRIMARY KEY,
-        ingredient_id INT NOT NULL,
-        quantity DECIMAL(10,2) NOT NULL,
-        unit VARCHAR(255) NOT NULL,
-        FOREIGN KEY (ingredient_id) REFERENCES Ingredients(ingredient_id)
-      )
-    """)
-
-    # Таблица смен сотрудников
-    self.cursor.execute("""
-      CREATE TABLE IF NOT EXISTS EmployeeShifts (
-        id INT AUTO_INCREMENT PRIMARY KEY,
-        employee_id INT NOT NULL,
-        shift_start TIMESTAMP NOT NULL,
-        shift_end TIMESTAMP,
-        FOREIGN KEY (employee_id) REFERENCES Employees(employee_id)
       )
     """)
 
@@ -171,10 +116,15 @@ class DatabaseManager:
     return self.cursor.fetchone()
 
   def update_employee(self, employee_id, first_name, last_name, position, salary):
-    sql = "UPDATE Employees SET first_name = %s, last_name = %s, position = %s, salary = %s WHERE employee_id = %s"
-    val = (first_name, last_name, position, salary, employee_id)
-    self.cursor.execute(sql, val)
-    self.conn.commit()
+    try:
+        sql = "UPDATE Employees SET first_name = %s, last_name = %s, position = %s, salary = %s WHERE employee_id = %s"
+        val = (first_name, last_name, position, salary, employee_id)
+        self.cursor.execute(sql, val)
+        self.conn.commit()
+    except mysql.connector.Error as e:
+        print(f"Error updating employee: {e}")
+        self.conn.rollback()  # Откат транзакции в случае ошибки
+        raise  # Прокидываем исключение дальше
 
   def delete_employee(self, employee_id):
     sql = "DELETE FROM Employees WHERE employee_id = %s"
@@ -213,28 +163,8 @@ class DatabaseManager:
     self.cursor.execute(query, (name,))
     result = self.cursor.fetchone()
     return result[0] if result else None
-    
-  # Методы для работы с Ingredients
-  def add_ingredient(self, name):
-    sql = "INSERT INTO Ingredients (name) VALUES (%s)"
-    val = (name,)
-    self.cursor.execute(sql, val)
-    self.conn.commit()
 
-  def get_ingredients(self):
-    self.cursor.execute("SELECT * FROM Ingredients")
-    return self.cursor.fetchall()
-
-  # Методы для работы с MenuItemIngredients
-  def add_menu_item_ingredient(self, menu_item_id, ingredient_id, quantity):
-    sql = "INSERT INTO MenuItemIngredients (menu_item_id, ingredient_id, quantity) VALUES (%s, %s, %s)"
-    val = (menu_item_id, ingredient_id, quantity)
-    self.cursor.execute(sql, val)
-    self.conn.commit()
-
-  def get_menu_item_ingredients(self):
-    self.cursor.execute("SELECT * FROM MenuItemIngredients")
-    return self.cursor.fetchall()
+  # Методы для работы с Tables
 
   def add_table(self, table_number, capacity):
     sql = "INSERT INTO Tables (capacity) VALUES (%s)"
@@ -283,54 +213,6 @@ class DatabaseManager:
     result = cursor.fetchall()  # Получаем все строки результата
     cursor.close()
     return result
-
-  # Методы для работы с OrderDetails
-  def add_order_detail(self, order_id, menu_item_id, quantity, notes):
-    sql = "INSERT INTO OrderDetails (order_id, menu_item_id, quantity, notes) VALUES (%s, %s, %s, %s)"
-    val = (order_id, menu_item_id, quantity, notes)
-    self.cursor.execute(sql, val)
-    self.conn.commit()
-
-  def get_order_details(self):
-    self.cursor.execute("SELECT * FROM OrderDetails")
-    return self.cursor.fetchall()
-
-  # Методы для работы с Inventory
-  def add_inventory(self, ingredient_id, quantity, unit):
-    sql = "INSERT INTO Inventory (ingredient_id, quantity, unit) VALUES (%s, %s, %s)"
-    val = (ingredient_id, quantity, unit)
-    self.cursor.execute(sql, val)
-    self.conn.commit()
-
-  def get_inventory(self):
-    self.cursor.execute("SELECT * FROM Inventory")
-    return self.cursor.fetchall()
-  
-  def get_products(self):
-        # Получаем список ингредиентов из Inventory с помощью JOIN
-        sql = """
-            SELECT 
-                Ingredients.name, 
-                Inventory.quantity, 
-                Inventory.unit
-            FROM 
-                Inventory
-            JOIN 
-                Ingredients ON Inventory.ingredient_id = Ingredients.ingredient_id
-        """
-        self.cursor.execute(sql)
-        return self.cursor.fetchall()
-
-  # Методы для работы с EmployeeShifts
-  def add_employee_shift(self, employee_id, shift_start, shift_end):
-    sql = "INSERT INTO EmployeeShifts (employee_id, shift_start, shift_end) VALUES (%s, %s, %s)"
-    val = (employee_id, shift_start, shift_end)
-    self.cursor.execute(sql, val)
-    self.conn.commit()
-
-  def get_employee_shifts(self):
-    self.cursor.execute("SELECT * FROM EmployeeShifts")
-    return self.cursor.fetchall()
 
   # Методы для работы с Sales
   def add_sale(self, order_id, sale_date, total_amount):
