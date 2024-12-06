@@ -1,4 +1,4 @@
-from PyQt5.QtWidgets import QDialog, QLabel, QLineEdit, QPushButton, QVBoxLayout, QMessageBox
+from PyQt5.QtWidgets import QDialog, QLabel, QLineEdit, QPushButton, QVBoxLayout, QMessageBox, QDesktopWidget
 
 class LoginWindow(QDialog):
     def __init__(self, db_manager, parent=None):
@@ -8,6 +8,13 @@ class LoginWindow(QDialog):
 
         self.setWindowTitle("Вход в систему")
         self.setFixedSize(300, 150)
+
+        # Центрируем окно
+        screen_geometry = QDesktopWidget().availableGeometry()  # Получаем доступную область экрана
+        window_geometry = self.frameGeometry()  # Получаем геометрию текущего окна
+        center_point = screen_geometry.center()  # Находим центр экрана
+        window_geometry.moveCenter(center_point)  # Перемещаем окно в центр
+        self.move(window_geometry.topLeft())
 
         # Элементы интерфейса
         self.label_username = QLabel("Имя пользователя:")
