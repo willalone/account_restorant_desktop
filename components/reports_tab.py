@@ -108,10 +108,8 @@ class ReportsTab(QWidget):
 
         # Заполнение данными
         for row_num, row_data in enumerate(data, start=3):
-            sheet.cell(row=row_num, column=1).value = row_data[0]  # Название блюда
-            sheet.cell(row=row_num, column=2).value = row_data[1]  # Количество
-            sheet.cell(row=row_num, column=3).value = row_data[2]  # Сумма
-            sheet.cell(row=row_num, column=4).value = row_data[3].strftime("%Y-%m-%d %H:%M:%S")  # Дата продажи
+            for col_num, value in enumerate(row_data, start=1):
+                sheet.cell(row=row_num, column=col_num).value = value
 
         # Сохранение файла
         try:
