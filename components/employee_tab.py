@@ -1,6 +1,6 @@
 from PyQt5.QtWidgets import (QWidget, QLabel, QLineEdit, 
                QPushButton, QVBoxLayout, QHBoxLayout,
-               QTableWidget, QTableWidgetItem, QDialog, QGridLayout)
+               QTableWidget, QTableWidgetItem, QDialog, QGridLayout, QMessageBox)
 
 class EmployeesTab(QWidget):
   def __init__(self, db_manager, parent=None):
@@ -76,25 +76,22 @@ class EmployeesTab(QWidget):
   def show_edit_employee_dialog(self):
     selected_row = self.employees_table.currentRow()
     if selected_row == -1:
-        QWidget.QMessageBox.warning(self, "Ошибка", "Выберите сотрудника для редактирования.")
+        QMessageBox.warning(self, "Ошибка", "Выберите сотрудника для редактирования.")
         return
 
     # Получаем ID сотрудника из выбранной строки таблицы
     employee_id = int(self.employees_table.item(selected_row, 0).text())
 
     # Создаем диалоговое окно один раз и вызываем exec_()
-    dialog = EditEmployeeDialog(self.db_manager, employee_id)
-
-    # Вызываем exec_() на диалоге
-    if dialog.exec_():
-        if dialog.result() == 200:
-            self.update_employees_table()
+    dialog = EditEmployeeDialog(self.db_manager, employee_id, self)
+    if dialog.exec_() == QDialog.Accepted:
+        self.update_employees_table()
             
   def delete_employee(self):
     elected_row = self.employees_table.currentRow()
     if elected_row == -1:
-      QWidget.QMessageBox.warning(self, "Ошибка", "Выберите сотрудника для удаления.")
-      return
+        QMessageBox.warning(self, "Ошибка", "Выберите сотрудника для удаления.")
+        return
     employee_id = int(self.employees_table.item(elected_row, 0).text())
     self.db_manager.delete_employee(employee_id)
 
