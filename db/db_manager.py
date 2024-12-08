@@ -167,15 +167,32 @@ class DatabaseManager:
   # Методы для работы с Tables
 
   def add_table(self, table_number, capacity):
-    sql = "INSERT INTO Tables (capacity) VALUES (%s)"
-    val = (capacity,) 
-    self.cursor.execute(sql, val)
-    self.conn.commit()
-     
+        sql = "INSERT INTO Tables (table_number, capacity) VALUES (%s, %s)"
+        val = (table_number, capacity)
+        self.cursor.execute(sql, val)
+        self.conn.commit()
+
+  def get_table_by_id(self, table_id):
+        query = "SELECT table_id, table_number, capacity FROM Tables WHERE table_id = %s"
+        cursor = self.conn.cursor()
+        cursor.execute(query, (table_id,))
+        return cursor.fetchone()
+
+  def update_table(self, table_id, table_number, capacity):
+        query = "UPDATE Tables SET table_number = %s, capacity = %s WHERE table_id = %s"
+        cursor = self.conn.cursor()
+        cursor.execute(query, (table_number, capacity, table_id))
+        self.conn.commit()
 
   def get_tables(self):
-    self.cursor.execute("SELECT * FROM Tables")
-    return self.cursor.fetchall()
+        self.cursor.execute("SELECT table_id, table_number, capacity FROM Tables")
+        return self.cursor.fetchall()
+
+  def delete_table(self, table_id):
+        query = "DELETE FROM Tables WHERE table_id = %s"
+        cursor = self.conn.cursor()
+        cursor.execute(query, (table_id,))
+        self.conn.commit()
   
   # Методы для работы с Orders
   def add_order(self, table_id, employee_id, status):
