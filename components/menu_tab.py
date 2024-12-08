@@ -57,6 +57,14 @@ class MenuTab(QWidget):
 
         self.setLayout(self.layout)
 
+    def get_selected_menu_item_id(self):
+        selected_row = self.menu_table.currentRow()
+        if selected_row == -1:
+            QMessageBox.warning(self, "Ошибка", "Пожалуйста, выберите пункт меню.")
+            return None
+        menu_item_id_item = self.menu_table.item(selected_row, 0)  # ID блюда
+        return int(menu_item_id_item.text()) if menu_item_id_item else None
+
     def add_menu_item(self):
         menu_item_name = self.menu_item_name_input.text()
         category = self.category_combobox.currentText()
@@ -86,25 +94,38 @@ class MenuTab(QWidget):
             QMessageBox.critical(self, "Ошибка", f"Не удалось обновить таблицу: {e}")
 
     def delete_menu_item(self):
-        selected_row = self.menu_table.currentRow()
-        if selected_row == -1:
-            QMessageBox.warning(self, "Ошибка", "Выберите пункт меню для удаления.")
-            return
-        try:
-            menu_item_id = int(self.menu_table.item(selected_row, 0).text())
-            self.db_manager.delete_menu_item(menu_item_id)
-            self.update_menu_table()
-            QMessageBox.information(self, "Успех", "Блюдо успешно удалено.")
-        except Exception as e:
-            QMessageBox.critical(self, "Ошибка", f"Не удалось удалить блюдо: {e}")
+      menu_item_id = self.get_selected_menu_item_id()
+      if menu_item_id is None:
+          return  # Ничего не выбрано, отменяем операцию
+      try:
+          self.db_manager.delete_menu_item(menu_item_id)
+          self.update_menu_table()
+          QMessageBox.information(self, "Успех", "Блюдо успешно удалено.")
+      except Exception as e:
+          QMessageBox.critical(self, "Ошибка", f"Не удалось удалить блюдо: {e}")
 
     def show_edit_menu_item_dialog(self):
-        selected_row = self.menu_table.currentRow()
-        if selected_row >= 0:
-            menu_item_id = int(self.menu_table.item(selected_row, 0).text())
-            edit_dialog = EditMenuItemDialog(self.db_manager, menu_item_id)
-            edit_dialog.menu_item_updated.connect(self.update_menu_table)
-            edit_dialog.exec_()
+      menu_item_id = self.get_selected_menu_item_id()
+      if menu_item_id is None:
+          return  # Ничего не выбрано, отменяем операцию
+
+      # Извлекаем данные из выбранной строки
+      selected_row = self.menu_table.currentRow()
+      menu_item_name = self.menu_table.item(selected_row, 1).text()
+      category = self.menu_table.item(selected_row, 2).text()
+      price = self.menu_table.item(selected_row, 3).text()
+
+      # Передаем данные в диалог
+      dialog = EditMenuItemDialog(self.db_manager, menu_item_id=menu_item_id, parent=self)
+
+      dialog.menu_item_name_input.setText(menu_item_name)
+      dialog.category_combobox.setCurrentText(category)
+      dialog.price_input.setText(price)
+
+      dialog.menu_item_updated.connect(self.update_menu_table)
+
+      if dialog.exec_() == QDialog.Accepted:
+          self.update_menu_table()
 
 # Создаем класс для диалогового окна редактирования блюда
 class EditMenuItemDialog(QDialog):
