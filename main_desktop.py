@@ -2,7 +2,6 @@ import sys
 from PyQt5.QtWidgets import QApplication, QMainWindow
 from PyQt5.QtCore import QCoreApplication
 
-
 from ui.main_window import MainWindow  # Импорт главного окна
 from db.db_manager import DatabaseManager  # Импорт менеджера БД
 from components.orders_tab import OrdersTab
