@@ -24,14 +24,6 @@ class DatabaseManager:
     )
     self.cursor = self.conn.cursor()
     self.create_tables()
-  
-  def get_user_by_login(self, login):
-      self.cursor.execute("SELECT * FROM users WHERE login=?", (login,))
-      row = self.cursor.fetchone()
-      if row:
-        return user(row[0], row[1], row[2], row[3])
-      else:
-        return None
 
   def create_tables(self):
     # Таблица сотрудников
@@ -100,20 +92,57 @@ class DatabaseManager:
     self.conn.commit()
 
   # Методы для работы с Employees
-  def add_employee(self, first_name, last_name, position, salary):
-    sql = "INSERT INTO Employees (first_name, last_name, position, salary) VALUES (%s, %s, %s, %s)"
-    val = (first_name, last_name, position, salary)
-    self.cursor.execute(sql, val)
-    self.conn.commit()
+  def add_employee(self, first_name, last_name, position, salary, login, password, role):
+    try:
+        # Добавляем пользователя в таблицу users
+        sql_user = """
+            INSERT INTO users (role) 
+            VALUES (%s)
+        """
+        self.cursor.execute(sql_user, (role,))
+        user_id = self.cursor.lastrowid  # Получаем ID только что вставленного пользователя
+
+        # Добавляем сотрудника в таблицу Employees с указанным user_id
+        sql_employee = """
+            INSERT INTO Employees (first_name, last_name, position, salary, user_id)
+            VALUES (%s, %s, %s, %s, %s)
+        """
+        employee_values = (first_name, last_name, position, salary, user_id)
+        self.cursor.execute(sql_employee, employee_values)
+        self.cursor.fetchall()  # Закрытие результата, если что-то осталось
+
+        # Получаем ID только что вставленного сотрудника
+        employee_id = self.cursor.lastrowid
+
+        # Добавляем логин и пароль в таблицу login_credentials
+        sql_credentials = """
+            INSERT INTO login_credentials (user_id, login, password)
+            VALUES (%s, %s, %s)
+        """
+        credentials_values = (user_id, login, password)
+        self.cursor.execute(sql_credentials, credentials_values)
+        self.conn.commit()
+
+    except Exception as e:
+        self.conn.rollback()
+        raise e
 
   def get_employees(self):
-    self.cursor.execute("SELECT * FROM Employees")
+    sql = """
+        SELECT e.employee_id, e.first_name, e.last_name, e.position, e.salary, 
+               lc.login, lc.password, u.role
+        FROM Employees e
+        LEFT JOIN login_credentials lc ON e.user_id = lc.user_id
+        LEFT JOIN users u ON e.user_id = u.user_id
+    """
+    self.cursor.execute(sql)
     return self.cursor.fetchall()
   
   def get_employee_by_id(self, employee_id):
-    sql = "SELECT * FROM Employees WHERE employee_id = %s"
-    self.cursor.execute(sql, (employee_id,))
-    return self.cursor.fetchone()
+    sql = "SELECT * FROM employees WHERE employee_id = %s"
+    with self.conn.cursor() as cursor:
+        cursor.execute(sql, (employee_id,))
+        return cursor.fetchone()
 
   def update_employee(self, employee_id, first_name, last_name, position, salary):
     try:
@@ -127,9 +156,39 @@ class DatabaseManager:
         raise  # Прокидываем исключение дальше
 
   def delete_employee(self, employee_id):
-    sql = "DELETE FROM Employees WHERE employee_id = %s"
-    self.cursor.execute(sql, (employee_id,))
-    self.conn.commit()
+    try:
+        # Получаем user_id, связанный с этим сотрудником
+        sql_get_user_id = "SELECT user_id FROM Employees WHERE employee_id = %s"
+        self.cursor.execute(sql_get_user_id, (employee_id,))
+        user_id = self.cursor.fetchone()
+
+        if user_id:
+            user_id = user_id[0]
+
+            # Удаляем записи из таблицы login_credentials
+            sql_delete_credentials = "DELETE FROM login_credentials WHERE user_id = %s"
+            self.cursor.execute(sql_delete_credentials, (user_id,))
+
+            # Удаляем сотрудника из таблицы Employees
+            sql_delete_employee = "DELETE FROM Employees WHERE employee_id = %s"
+            self.cursor.execute(sql_delete_employee, (employee_id,))
+
+            # Удаляем записи из таблицы users
+            sql_delete_user = "DELETE FROM users WHERE user_id = %s"
+            self.cursor.execute(sql_delete_user, (user_id,))
+
+        # Применяем изменения
+        self.conn.commit()
+
+    except Exception as e:
+        self.conn.rollback()
+        print(f"Ошибка при удалении сотрудника: {e}")
+        raise e
+
+    except Exception as e:
+        self.conn.rollback()
+        print(f"Ошибка при удалении сотрудника: {e}")
+        raise e
 
   # Методы для работы с Menu
   def add_menu_item(self, name, category, price):
@@ -202,7 +261,7 @@ class DatabaseManager:
     """
     val = (table_id, employee_id, status)
     self.cursor.execute(sql, val)
-    self.conn.commit() 
+    self.conn.commit()
 
   def edit_order(self, order_id, table_id, employee_id, status):
     sql = """
@@ -220,7 +279,7 @@ class DatabaseManager:
     self.conn.commit()
 
   def get_orders(self):
-    self.cursor.execute("SELECT * FROM Orders")
+    self.cursor.execute("SELECT order_id, table_id, employee_id, status FROM Orders")
     return self.cursor.fetchall()
   
   def execute_query(self, query, params=None):
@@ -306,16 +365,18 @@ class DatabaseManager:
         return self.cursor.fetchall()
   
   # Методы для работы с регистрацией
-  def get_user_by_login(self, username):
-    """Возвращает информацию о пользователе по его логину (username)."""
-    self.cursor.execute("SELECT * FROM users WHERE username = %s", (username,))
+  def get_user_by_login(self, login, password):
+    """Возвращает информацию о пользователе по логину и паролю."""
+    self.cursor.execute(
+        "SELECT u.user_id, u.role, lc.password FROM users u "
+        "JOIN login_credentials lc ON u.user_id = lc.user_id "
+        "WHERE lc.login = %s AND lc.password = %s", 
+        (login, password)
+    )
     user_data = self.cursor.fetchone()
     if user_data:
-      return user(user_data[1], user_data[2]) # Создаем объект User
+        return {"user_id": user_data[0], "role": user_data[1], "password": user_data[2]}  # Добавлен password
     else:
-      return None
-
-  def close_connection(self):
-    self.conn.close()
+        return None
 
   
