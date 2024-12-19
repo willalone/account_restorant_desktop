@@ -7,7 +7,7 @@ class LoginWindow(QDialog):
         self.parent = parent
 
         self.setWindowTitle("Вход в систему")
-        self.setFixedSize(300, 150)
+        self.setFixedSize(500, 300)
 
         # Центрируем окно
         screen_geometry = QDesktopWidget().availableGeometry()  # Получаем доступную область экрана
@@ -35,33 +35,66 @@ class LoginWindow(QDialog):
         layout.addWidget(self.button_login)
 
         self.setLayout(layout)
-    
-    def authenticate(self):
-        username = self.username_input.text()
-        password = self.password_input.text()
 
-        # Проверка логина и пароля
-        if username == "user" and password == "user1":
-            self.user_role = "employee"  # Устанавливаем роль "читатель"
-            QMessageBox.information(self, "Успех", "Вы вошли как пользователь с ограниченным доступом")
-            self.close()
-        elif username == "admin" and password == "admin123":
-            self.user_role = "admin"  # Устанавливаем роль "редактор"
-            QMessageBox.information(self, "Успех", "Вы вошли как администратор")
-            self.close()
-        else:
-            QMessageBox.warning(self, "Ошибка", "Неверный логин или пароль")
+        self.setStyleSheet("""
+            QDialog {
+                background-color: #f4f4f9;
+                font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                border-radius: 10px;
+                padding: 20px;
+            }
+
+            QLabel {
+                font-size: 14px;
+                color: #333333;
+                margin-bottom: 5px;
+            }
+
+            QLineEdit {
+                border: 1px solid #ccc;
+                border-radius: 5px;
+                padding: 8px;
+                font-size: 14px;
+                margin-bottom: 15px;
+            }
+
+            QLineEdit:focus {
+                border-color: #007bff;
+            }
+
+            QPushButton {
+                background-color: #007bff;
+                color: white;
+                border: none;
+                border-radius: 5px;
+                padding: 10px;
+                font-size: 16px;
+            }
+
+            QPushButton:hover {
+                background-color: #0056b3;
+            }
+
+            QPushButton:pressed {
+                background-color: #004085;
+            }
+
+            QPushButton:disabled {
+                background-color: #cccccc;
+            }
+        """)
 
     def check_credentials(self):
         username = self.input_username.text()
         password = self.input_password.text()
 
-        try:
-            if username == "admin" and password == "admin_228":
-                self.parent.show_main_window("admin")  # Показываем главное окно для администратора
-            elif username == "user" and password == "user1":
-                self.parent.show_main_window("user")  # Показываем главное окно для обычного пользователя
-            else:
-                QMessageBox.warning(self, "Ошибка", "Неверное имя пользователя или пароль")
-        except Exception as e:
-            QMessageBox.critical(self, "Ошибка", f"Произошла ошибка: {e}")
+        user_data = self.db_manager.get_user_by_login(username, password)
+        print(f"Ищем пользователя: {username}, данные: {user_data}")  # Отладочное сообщение
+        
+        if user_data and user_data.get('password') == password:
+            role = user_data.get('role')
+            print(f"Авторизация успешна. Роль: {role}")
+            self.parent.show_main_window(role)
+        else:
+            QMessageBox.warning(self, "Ошибка", "Неверное имя пользователя или пароль")
+            print("Неверные данные для входа")
