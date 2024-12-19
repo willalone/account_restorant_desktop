@@ -29,8 +29,10 @@ class ReportsTab(QWidget):
 
         # Таблица для отображения отчетов
         self.report_table = QTableWidget(self)
-        self.report_table.setColumnCount(4)
-        self.report_table.setHorizontalHeaderLabels(["Название блюда", "Количество", "Сумма", "Дата продажи"])
+        self.report_table.setColumnCount(6)
+        self.report_table.setHorizontalHeaderLabels(
+            ["ID Заказа", "Название блюда", "Количество", "Сумма", "Дата продажи", "Сотрудник"]
+        )
 
         # Макет для полей ввода и кнопки
         input_layout = QHBoxLayout()
@@ -49,8 +51,10 @@ class ReportsTab(QWidget):
 
     def generate_report(self):
         report_type = self.report_type_combobox.currentText()
-        start_date = self.start_date_edit.date().toPyDate()
-        end_date = self.end_date_edit.date().toPyDate()
+        start_date = self.start_date_edit.date().toString('yyyy-MM-dd')
+        end_date = self.end_date_edit.date().toString('yyyy-MM-dd')
+
+        print(f"Start date: {start_date}, End date: {end_date}")  # Для отладки
 
         try:
             # SQL-запрос для получения данных
@@ -59,7 +63,7 @@ class ReportsTab(QWidget):
                 menu.name,
                 SUM(order_dishes.quantity) AS quantity,
                 SUM(menu.price * order_dishes.quantity) AS total_price,
-                orders.order_time
+                DATE(orders.order_time) AS order_date
             FROM 
                 orders
             LEFT JOIN order_dishes ON orders.order_id = order_dishes.order_id
@@ -71,13 +75,17 @@ class ReportsTab(QWidget):
             self.db_manager.cursor.execute(query, (start_date, end_date))
             report_data = self.db_manager.cursor.fetchall()
 
+            print("Report Data:", report_data)  # Выводим данные для отладки
+
+            if not report_data:
+                QMessageBox.warning(self, "Предупреждение", "Нет данных для отображения в отчете.")
+                return
+
             # Отображение данных в таблице интерфейса
             self.report_table.setRowCount(len(report_data))
             for row_idx, row in enumerate(report_data):
-                self.report_table.setItem(row_idx, 0, QTableWidgetItem(row[0]))  # Название блюда
-                self.report_table.setItem(row_idx, 1, QTableWidgetItem(str(row[1])))  # Количество
-                self.report_table.setItem(row_idx, 2, QTableWidgetItem(f"{row[2]:.2f}"))  # Сумма
-                self.report_table.setItem(row_idx, 3, QTableWidgetItem(row[3].strftime("%Y-%m-%d %H:%M:%S")))  # Дата
+                for col_idx, value in enumerate(row):
+                    self.report_table.setItem(row_idx, col_idx, QTableWidgetItem(str(value)))
 
             # Экспорт в Excel
             self.export_to_excel(report_data, report_type, start_date, end_date)
@@ -85,6 +93,7 @@ class ReportsTab(QWidget):
             QMessageBox.critical(self, "Ошибка", f"Не удалось сгенерировать отчет: {e}")
 
     def export_to_excel(self, data, report_type, start_date, end_date):
+        print("Exporting to Excel")  # Для отладки
         file_path, _ = QFileDialog.getSaveFileName(
             self, "Сохранить отчет", "", "Excel Files (*.xlsx);;All Files (*)"
         )
@@ -97,12 +106,12 @@ class ReportsTab(QWidget):
         sheet.title = "Отчет по заказам"
 
         # Заголовок отчета
-        sheet.merge_cells("A1:D1")
+        sheet.merge_cells("A1:F1")
         sheet["A1"] = f"Отчет: {report_type} ({start_date} - {end_date})"
         sheet["A1"].alignment = Alignment(horizontal="center")
 
         # Заголовки столбцов
-        headers = ["Название блюда", "Количество", "Сумма", "Дата продажи"]
+        headers = ["ID Заказа", "Название блюда", "Количество", "Сумма", "Дата продажи", "Сотрудник"]
         for col_num, header in enumerate(headers, start=1):
             sheet.cell(row=2, column=col_num).value = header
 
@@ -117,3 +126,4 @@ class ReportsTab(QWidget):
             QMessageBox.information(self, "Успех", f"Отчет успешно сохранен: {file_path}")
         except Exception as e:
             QMessageBox.critical(self, "Ошибка", f"Не удалось сохранить отчет: {e}")
+
